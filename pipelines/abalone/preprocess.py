@@ -10,6 +10,8 @@ import boto3
 import numpy as np
 import pandas as pd
 
+from sklearn.utils import shuffle 
+from sklearn.model_selection import train_test_split
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
@@ -59,7 +61,7 @@ if __name__ == "__main__":
     parser.add_argument("--input-data", type=str, required=True)
     args = parser.parse_args()
 
-    base_dir = "/opt/ml/processing"
+    base_dir = "opt/ml/processing"
     pathlib.Path(f"{base_dir}/data").mkdir(parents=True, exist_ok=True)
     input_data = args.input_data
     bucket = input_data.split("/")[2]
@@ -101,20 +103,34 @@ if __name__ == "__main__":
         ]
     )
 
+    logger.info("Splitting %d rows of data into train, validation, test datasets.", len(df))
+    X = df.copy()
+    y = X.pop("rings")
+    X_train, X_vt, y_train, y_vt = train_test_split(
+        X, y, test_size=0.3, random_state=42
+    )
+    X_validation, X_test, y_validation, y_test = train_test_split(
+        X_vt, y_vt, test_size=0.5, random_state=42
+    )
+
     logger.info("Applying transforms.")
-    y = df.pop("rings")
-    X_pre = preprocess.fit_transform(df)
-    y_pre = y.to_numpy().reshape(len(y), 1)
-
-    X = np.concatenate((y_pre, X_pre), axis=1)
-
-    logger.info("Splitting %d rows of data into train, validation, test datasets.", len(X))
-    np.random.shuffle(X)
-    train, validation, test = np.split(X, [int(0.7 * len(X)), int(0.85 * len(X))])
+    X_train = preprocess.fit_transform(X_train)
+    X_validation = preprocess.transform(X_validation)
+    X_test = preprocess.transform(X_test)
+    df_train = np.concatenate((y_train.to_numpy().reshape(-1, 1), X_train), axis=1)
+    df_validation = np.concatenate((y_validation.to_numpy().reshape(-1, 1), X_validation), axis=1)
+    df_test = np.concatenate((y_test.to_numpy().reshape(-1, 1), X_test), axis=1)
 
     logger.info("Writing out datasets to %s.", base_dir)
-    pd.DataFrame(train).to_csv(f"{base_dir}/train/train.csv", header=False, index=False)
-    pd.DataFrame(validation).to_csv(
+    pathlib.Path(f"{base_dir}/train").mkdir(parents=True, exist_ok=True)
+    pathlib.Path(f"{base_dir}/validation").mkdir(parents=True, exist_ok=True)
+    pathlib.Path(f"{base_dir}/test").mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(df_train).to_csv(
+        f"{base_dir}/train/train.csv", header=False, index=False
+    )
+    pd.DataFrame(df_validation).to_csv(
         f"{base_dir}/validation/validation.csv", header=False, index=False
     )
-    pd.DataFrame(test).to_csv(f"{base_dir}/test/test.csv", header=False, index=False)
+    pd.DataFrame(df_test).to_csv(
+        f"{base_dir}/test/test.csv", header=False, index=False
+    )
