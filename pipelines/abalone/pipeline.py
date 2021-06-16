@@ -59,7 +59,6 @@ def get_session(region, default_bucket):
     """
 
     boto_session = boto3.Session(region_name=region)
-
     sagemaker_client = boto_session.client("sagemaker")
     runtime_client = boto_session.client("sagemaker-runtime")
     return sagemaker.session.Session(
@@ -93,7 +92,9 @@ def get_pipeline(
         role = sagemaker.session.get_execution_role(sagemaker_session)
 
     # parameters for pipeline execution
-    processing_instance_count = ParameterInteger(name="ProcessingInstanceCount", default_value=1)
+    processing_instance_count = ParameterInteger(
+        name="ProcessingInstanceCount", default_value=1
+    )
     processing_instance_type = ParameterString(
         name="ProcessingInstanceType", default_value="ml.m5.xlarge"
     )

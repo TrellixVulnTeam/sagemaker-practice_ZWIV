@@ -91,7 +91,7 @@ def main():  # pragma: no cover
         print("\n###### Created/Updated SageMaker Pipeline: Response received:")
         print(upsert_response)
 
-        print(f"\n###### Execution started with PipelineExecutionArn: {execution.arn}")
+        print(f"\n###### Execution started...")
         execution = pipeline.start()
         
         print("Waiting for the execution to finish...")
